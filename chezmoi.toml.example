@@ -1,0 +1,24 @@
+# Azure Key Vault連携のためのchezmoi設定例
+# ~/.config/chezmoi/chezmoi.toml
+
+[data]
+    # Azure Key Vault設定
+    keyVaultName = "your-keyvault-name"
+    subscriptionId = "your-subscription-id"
+
+    # Git設定（Key Vaultから取得）
+    [data.git]
+        name = "Your Name"
+        email = "your-email@example.com"
+
+# OS固有の設定
+[data.os]
+    # Windows固有の設定
+    {{- if eq .chezmoi.os "windows" }}
+    homePrefix = "C:/Users"
+    {{- else }}
+    homePrefix = "/home"
+    {{- end }}
+
+# テンプレート関数を使用してAzure Key Vaultからシークレット取得
+# 使用例: {{ azKeyVaultSecret .keyVaultName "secret-name" }}

@@ -1,0 +1,34 @@
+# ============================================================================
+# .chezmoiignore - chezmoi で無視するファイル
+# ============================================================================
+#
+# このファイルでは、chezmoiが管理しないファイルを指定します
+# パターンマッチングをサポート（.gitignore と同様）
+#
+# ============================================================================
+
+# README（ソースリポジトリには含めるが、ホームディレクトリには配置しない）
+README.md
+AZURE_KEY_VAULT.md
+chezmoi.toml.example
+skills-lock.json
+
+# Ansible関連ファイル（もし混在している場合）
+ansible.cfg
+site.yml
+playbooks/
+roles/
+inventories/
+group_vars/
+
+# SSH秘密鍵とセンシティブファイル（セキュリティ上の理由で除外）
+.ssh/id_*
+!.ssh/id_*.pub
+.ssh/known_hosts
+.ssh/authorized_keys
+
+# その他の秘密ファイル
+.gnupg/
+.password-store/
+.aws/credentials
+.config/gh/hosts.yml

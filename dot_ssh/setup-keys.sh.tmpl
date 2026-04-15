@@ -1,0 +1,64 @@
+# Azure Key Vault連携のためのスクリプト例
+# 使用方法: chezmoi execute-template .ssh/setup-keys.sh.tmpl | sh
+
+#!/bin/bash
+
+# Azure Key Vaultの設定
+{{- $keyVaultName := "your-keyvault-name" }}
+{{- $subscriptionId := "your-subscription-id" }}
+
+{{- if lookPath "az" }}
+
+echo "Setting up SSH keys from Azure Key Vault..."
+
+# Azure CLIでログイン状態を確認
+if ! az account show &>/dev/null; then
+    echo "Azure CLIにログインしてください: az login"
+    exit 1
+fi
+
+{{- if $subscriptionId }}
+# サブスクリプション設定
+az account set --subscription "{{ $subscriptionId }}"
+{{- end }}
+
+# Key Vaultへのアクセス確認
+if ! az keyvault show --name "{{ $keyVaultName }}" &>/dev/null; then
+    echo "Key Vault '{{ $keyVaultName }}' にアクセスできません"
+    echo "Key Vault名やアクセス権限を確認してください"
+    exit 1
+fi
+
+# SSH秘密鍵の取得と配置
+echo "GitHub SSH秘密鍵を取得中..."
+if az keyvault secret show --vault-name "{{ $keyVaultName }}" --name "ssh-github-private-key" --query value -o tsv > ~/.ssh/id_ed25519 2>/dev/null; then
+    chmod 600 ~/.ssh/id_ed25519
+    echo "✓ SSH秘密鍵を配置しました"
+else
+    echo "⚠ SSH秘密鍵 'ssh-github-private-key' が見つかりません"
+fi
+
+# SSH公開鍵の取得と配置
+echo "GitHub SSH公開鍵を取得中..."
+if az keyvault secret show --vault-name "{{ $keyVaultName }}" --name "ssh-github-public-key" --query value -o tsv > ~/.ssh/id_ed25519.pub 2>/dev/null; then
+    chmod 644 ~/.ssh/id_ed25519.pub
+    echo "✓ SSH公開鍵を配置しました"
+else
+    echo "⚠ SSH公開鍵 'ssh-github-public-key' が見つかりません"
+fi
+
+# SSH Agentに鍵を追加
+if [ -f ~/.ssh/id_ed25519 ]; then
+    ssh-add ~/.ssh/id_ed25519 2>/dev/null || true
+    echo "✓ SSH鍵をSSH Agentに追加しました"
+fi
+
+echo "SSH keys configured successfully!"
+
+{{- else }}
+echo "Azure CLI (az) not installed"
+echo "Install with:"
+echo "  Windows: winget install Microsoft.AzureCLI"
+echo "  macOS:   brew install azure-cli"
+echo "  Linux:   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
+{{- end }}

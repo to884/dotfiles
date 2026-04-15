@@ -1,0 +1,80 @@
+# SSH クライアント設定ファイル
+# chezmoi で管理されています
+
+# ============================================================================
+# グローバル設定
+# ============================================================================
+
+# すべてのホストに適用される設定
+Host *
+    # SSH鍵を自動的に追加
+    AddKeysToAgent yes
+
+    # 接続維持設定
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+    # 接続タイムアウト
+    ConnectTimeout 10
+
+    # 圧縮を有効化（遅いネットワーク向け）
+    Compression yes
+
+    # ホストキーの確認
+    StrictHostKeyChecking ask
+
+    # 既知のホストキーを記録
+    UserKnownHostsFile ~/.ssh/known_hosts
+
+    # ポートフォワーディング設定
+    ForwardAgent no
+    ForwardX11 no
+
+# ============================================================================
+# ホスト固有の設定（例）
+# ============================================================================
+
+# GitHub
+Host github.com
+    HostName github.com
+    User git
+{{- if stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519") }}
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+{{- end }}
+
+# 例: 開発サーバー
+# Host dev-server
+#     HostName dev.example.com
+#     User {{ .chezmoi.username }}
+#     Port 22
+#     IdentityFile ~/.ssh/id_rsa
+#     ForwardAgent yes
+
+# 例: ジャンプホスト経由の接続
+# Host internal-server
+#     HostName 10.0.1.100
+#     User admin
+#     ProxyJump bastion.example.com
+
+# 例: WSL から Windows ホストの SSH エージェント利用
+{{- if eq .chezmoi.os "linux" }}
+{{- if (.chezmoi.kernel.osrelease | lower | contains "microsoft") }}
+# Host *
+#     IdentityAgent /mnt/c/Users/{{ .windows_username }}/.ssh/agent.sock
+{{- end }}
+{{- end }}
+
+# ============================================================================
+# Azure Key Vault連携の設定例
+# ============================================================================
+
+# Azure Key Vaultから秘密鍵を取得する場合：
+# 1. setup-keys.sh.tmplスクリプトを実行
+# 2. または以下のコマンドで直接取得：
+#    az keyvault secret show --vault-name "{{ .keyVaultName }}" --name "ssh-github-private-key" --query value -o tsv > ~/.ssh/id_ed25519
+
+{{- if .keyVaultName }}
+# Key Vault設定: {{ .keyVaultName }}
+# 秘密鍵の自動取得が設定されています
+{{- end }}
