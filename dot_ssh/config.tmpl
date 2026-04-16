@@ -38,8 +38,8 @@ Host *
 Host github.com
     HostName github.com
     User git
-{{- if stat (joinPath .chezmoi.homeDir ".ssh/id_ed25519") }}
-    IdentityFile ~/.ssh/id_ed25519
+{{- if stat (joinPath .chezmoi.homeDir ".ssh/{{ .git.email }}.ed25519") }}
+    IdentityFile ~/.ssh/{{ .git.email }}.ed25519
     IdentitiesOnly yes
 {{- end }}
 
@@ -61,7 +61,7 @@ Host github.com
 {{- if eq .chezmoi.os "linux" }}
 {{- if (.chezmoi.kernel.osrelease | lower | contains "microsoft") }}
 # Host *
-#     IdentityAgent /mnt/c/Users/{{ .windows_username }}/.ssh/agent.sock
+#     IdentityAgent /mnt/c/Users/<YOUR_WINDOWS_USERNAME>/.ssh/agent.sock
 {{- end }}
 {{- end }}
 

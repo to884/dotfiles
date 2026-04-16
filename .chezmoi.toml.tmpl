@@ -9,14 +9,29 @@
 #
 # ============================================================================
 
-{{- $windows_username := promptStringOnce . "windows_username" "windows: ユーザー名を入力してください" -}}
 {{- $git_name := promptStringOnce . "git_name" "git: 氏名を入力してください" -}}
 {{- $email := promptStringOnce . "email" "メールアドレス(Git)を入力してください" -}}
-{{- $github_user := promptStringOnce . "github_user" " GitHubユーザー名を入力してください (オプション)" -}}
+{{- $github_user := promptStringOnce . "github_user" "GitHubユーザー名を入力してください (オプション)" -}}
+{{- $ssh_private_key := promptStringOnce . "ssh_private_key" "SSH秘密鍵のファイル名を入力してください" "id_ed25519" -}}
+{{- $ssh_public_key := promptStringOnce . "ssh_public_key" "SSH公開鍵のファイル名を入力してください" "id_ed25519.pub" -}}
 
 [data]
-    git_name = {{ $git_name | quote }}
-    email = {{ $email | quote }}
+    [data.git]
+        name = {{ $git_name | quote }}
+        email = {{ $email | quote }}
 {{- if $github_user }}
-    github_user = {{ $github_user | quote }}
+    [data.github]
+        user = {{ $github_user | quote }}
 {{- end }}
+
+    [data.ssh]
+        # SSH鍵のファイル名（~/.ssh/ 配下）
+        privateKeyFile = {{ $ssh_private_key | quote }}
+        publicKeyFile = {{ $ssh_public_key | quote }}
+
+[data.os]
+    {{- if eq .chezmoi.os "windows" }}
+    homePrefix = "C:/Users"
+    {{- else }}
+    homePrefix = "/home"
+    {{- end }}
