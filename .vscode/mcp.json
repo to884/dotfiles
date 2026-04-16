@@ -1,0 +1,12 @@
+
+{
+  "servers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "mcp-server-filesystem",
+      "args": [
+        "${workspaceFolder}"
+      ]
+    }
+  }
+}

@@ -21,6 +21,7 @@
 
 ### SSH設定
 - `~/.ssh/config` - SSH クライアント設定（接続設定、ホスト別設定、セキュリティ設定）
+- `~/.ssh/setup-keys.sh` - SSHキーセットアップスクリプト（Azure Key Vault連携）
 
 ### ターミナルツール設定
 - `~/.tmux.conf` - tmux設定（キーバインド、プラグイン）
@@ -32,15 +33,10 @@
 
 ### 前提条件
 
-1. **Ansibleでシステム基盤を構築**（chezmoi含む）
-   ```bash
-   cd ansible
-   ansible-playbook -i inventories/wsl/hosts site.yml
-   ```
-
-2. **chezmoiが利用可能であること**
+1. **chezmoiが利用可能であること**
    ```bash
    which chezmoi
+   # 例）linuxbrew を使用してインストールした場合：
    # /home/linuxbrew/.linuxbrew/bin/chezmoi
    ```
 
@@ -80,6 +76,24 @@ chezmoi diff
 chezmoi apply -v
 ```
 
+#### 4. シークレット（機密情報）の配置
+
+chezmoi適用後、SSH鍵などのシークレットを手動で配置します：
+
+```bash
+# SSH鍵のセットアップ状況を確認
+~/.ssh/setup-keys.sh
+
+# 新しい鍵を生成する場合
+ssh-keygen -t ed25519 -C "your.email@example.com"
+
+# または、既存の鍵をコピー（Windows から WSL の場合）
+cp /mnt/c/Users/YourName/.ssh/id_ed25519 ~/.ssh/
+chmod 600 ~/.ssh/id_ed25519
+```
+
+詳細は「[🔒 セキュリティとシークレット管理](#-セキュリティとシークレット管理)」セクションを参照してください。
+
 ### 日常的な使い方
 
 #### 設定ファイルを編集
@@ -109,7 +123,11 @@ chezmoi apply -v
 chezmoi init https://github.com/your-username/dotfiles.git
 
 # 適用
-chezmoi apply
+chezmoi apply -v
+
+# シークレットの配置（手動）
+~/.ssh/setup-keys.sh
+# 上記のガイドに従ってSSH鍵などを配置
 ```
 
 ## 📁 ディレクトリ構造
@@ -117,26 +135,36 @@ chezmoi apply
 ```
 dotfiles/
 ├── README.md                    # このファイル
+├── AZURE_KEY_VAULT.md          # Azure Key Vault連携ドキュメント
 ├── .chezmoi.toml.tmpl          # chezmoi設定（テンプレート）
+├── .chezmoiignore              # chezmoi除外ファイル
+├── chezmoi.toml.example        # chezmoi設定例（Azure Key Vault用）
 ├── dot_bashrc.tmpl             # ~/.bashrc
 ├── dot_zshrc.tmpl              # ~/.zshrc
 ├── dot_gitconfig.tmpl          # ~/.gitconfig
 ├── dot_curlrc.tmpl             # ~/.curlrc（Zscaler証明書設定）
 ├── dot_tmux.conf               # ~/.tmux.conf
 ├── dot_ssh/
-│   └── config.tmpl             # ~/.ssh/config
-└── dot_config/
-    ├── starship.toml           # ~/.config/starship.toml
-    ├── topgrade.toml           # ~/.config/topgrade.toml
-    └── powerline/              # ~/.config/powerline/
-        ├── config.json
-        ├── colors.json
-        ├── colorschemes/
-        │   └── tmux/
-        │       └── tmux-colorscheme.json
-        └── themes/
-            └── tmux/
-                └── tmux-theme.json
+│   ├── config.tmpl             # ~/.ssh/config
+│   └── setup-keys.sh.tmpl      # ~/.ssh/setup-keys.sh（Azure Key Vault連携）
+├── dot_config/
+│   ├── starship.toml           # ~/.config/starship.toml
+│   ├── topgrade.toml           # ~/.config/topgrade.toml
+│   └── powerline/              # ~/.config/powerline/
+│       ├── config.json
+│       ├── colors.json
+│       ├── colorschemes/
+│       │   └── tmux/
+│       │       └── tmux-colorscheme.json
+│       └── themes/
+│           └── tmux/
+│               └── tmux-theme.json
+├── .chezmoiexternal/
+│   └── azure-keyvault-secret   # Azure Key Vault連携用
+├── .agents/
+│   └── skills/                 # AI エージェントスキル定義
+└── .github/
+    └── instructions/           # GitHub Copilot インストラクション
 ```
 
 ## 🔄 Ansibleとの関係
@@ -171,13 +199,33 @@ chezmoi apply
 
 ### ユーザー情報の設定
 
-`.chezmoi.toml.tmpl` でユーザー固有の情報を管理できます：
+`.chezmoi.toml.tmpl` でユーザー固有の情報を管理できます。
+
+初回実行時に以下の情報を対話的に入力します：
+- Windows ユーザー名（WSL環境の場合）
+- Git 氏名
+- Git メールアドレス
+- GitHub ユーザー名（オプション）
+- SSH秘密鍵のファイル名（デフォルト: `id_ed25519`）
+- SSH公開鍵のファイル名（デフォルト: `id_ed25519.pub`）
+
+生成される設定ファイルの構造：
 
 ```toml
 [data]
-    git_name = "Your Name"
-    email = "your.email@example.com"
-    github_user = "your-github-username"
+    [data.git]
+        name = "Your Name"
+        email = "your.email@example.com"
+    [data.github]
+        user = "your-github-username"
+
+    [data.ssh]
+        # SSH鍵のファイル名（~/.ssh/ 配下）
+        privateKeyFile = "id_ed25519"
+        publicKeyFile = "id_ed25519.pub"
+
+[data.os]
+    homePrefix = "/home"  # Windowsの場合は "C:/Users"
 ```
 
 これらの変数は `.tmpl` ファイル内で使用できます：
@@ -185,8 +233,12 @@ chezmoi apply
 ```bash
 # dot_gitconfig.tmpl
 [user]
-    name = {{ .git_name }}
-    email = {{ .email }}
+    name = {{ .git.name }}
+    email = {{ .git.email }}
+
+# dot_ssh/setup-keys.sh.tmpl
+SSH_PRIVATE_KEY="{{ .ssh.privateKeyFile }}"
+SSH_PUBLIC_KEY="{{ .ssh.publicKeyFile }}"
 ```
 
 ### 主要な設定ファイルの説明
@@ -226,11 +278,91 @@ SSH 接続設定を一元管理：
 
 設定例を参考にカスタマイズしてください。
 
-## 🔒 セキュリティ
+## 🔒 セキュリティとシークレット管理
 
-- 機密情報（APIキー、パスワード）は**絶対に**コミットしないでください
-- 必要な場合は `.chezmoiignore` で除外するか、暗号化機能を使用してください
-- `.gitconfig` のユーザー情報はテンプレート変数を使用してください
+### 基本方針
+
+このdotfilesリポジトリでは、**シークレット（機密情報）はchezmoiで管理しません**。  
+すべてのシークレットは、ユーザーが手動で適切な場所に配置する必要があります。
+
+### 除外されるファイル
+
+`.chezmoiignore` で以下のファイルが自動的に除外されます：
+
+- **SSH関連**
+  - `~/.ssh/id_*` （秘密鍵）
+  - `~/.ssh/known_hosts`
+  - `~/.ssh/authorized_keys`
+  
+- **認証情報**
+  - `~/.aws/credentials` （AWS認証情報）
+  - `~/.config/gh/hosts.yml` （GitHub CLI認証）
+  
+- **暗号化関連**
+  - `~/.gnupg/*` （GPG鍵）
+  - `~/.password-store/*` （pass パスワードストア）
+
+### シークレットのセットアップ方法
+
+#### 1. SSH鍵のセットアップ
+
+セットアップガイドスクリプトを実行して、現在の状態を確認できます：
+
+```bash
+# chezmoi適用後に実行
+~/.ssh/setup-keys.sh
+```
+
+**新しい鍵を生成する場合：**
+
+```bash
+ssh-keygen -t ed25519 -C "your.email@example.com"
+chmod 600 ~/.ssh/id_ed25519
+chmod 644 ~/.ssh/id_ed25519.pub
+```
+
+**既存の鍵をコピーする場合：**
+
+```bash
+# Windowsから WSL へ
+cp /mnt/c/Users/YourName/.ssh/id_ed25519 ~/.ssh/
+chmod 600 ~/.ssh/id_ed25519
+
+# 別のマシンから scp で
+scp user@remote:~/.ssh/id_ed25519 ~/.ssh/
+chmod 600 ~/.ssh/id_ed25519
+```
+
+#### 2. その他のシークレット
+
+必要に応じて手動で配置してください：
+
+```bash
+# AWS認証情報
+mkdir -p ~/.aws
+# credentials ファイルを配置
+chmod 600 ~/.aws/credentials
+
+# GitHub CLI認証
+# gh auth login を実行するか、手動で配置
+mkdir -p ~/.config/gh
+
+# GPG鍵
+# gpg --import を使用するか、既存の ~/.gnupg をコピー
+```
+
+### セキュリティのベストプラクティス
+
+- ✅ 機密情報は**絶対に**Gitリポジトリにコミットしない
+- ✅ `.chezmoiignore` で確実に除外されていることを確認
+- ✅ SSH秘密鍵のパーミッションは `600` に設定
+- ✅ `.gitconfig` のユーザー情報はテンプレート変数を使用
+- ⚠️ どうしても暗号化して管理したい場合は、chezmoi の [age暗号化機能](https://www.chezmoi.io/user-guide/encryption/) を検討
+
+### Azure Key Vault連携（オプション）
+
+自動的なシークレット管理が必要な場合は、[AZURE_KEY_VAULT.md](AZURE_KEY_VAULT.md) を参照してください。  
+ただし、基本的には手動配置を推奨します。
 
 ## 🔐 Zscaler環境での使用
 

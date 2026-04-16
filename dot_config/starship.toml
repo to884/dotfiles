@@ -84,16 +84,16 @@ add_newline = true
 # </未使用>
 format = """
 [╭](fg:#778997)[$fill](fg:#bdbdbd)
-[│](fg:#778997)( $os)( $username)\
+[│](fg:#778997)($os)($sudo)($username)\
 ($hostname)\
 ( $localip)\
 ( $shlvl)\
 ( $singularyity)\
 ( $kubernetes)\
 ( $vcsh)\
-( $memory_usage)( $battery)( $aws)( $azure)( $gcloud)( $openstack)($c)($dotnet)($rust)($python)($nodejs)($golang)($docker_context)
+( $memory_usage)( $battery)( $aws)( $azure)( $gcloud)( $openstack)( $c)( $dotnet)( $rust)( $python)( $nodejs)( $golang)( $docker_context)
 [ ](fg:#174276 bg:#174276)[ ](bg:#174276)[$directory](bg:#174276)[\uE0B0](fg:#174276 bg:#0C5DA5)$git_branch[\uE0B0](fg:#0C5DA5 bg:#0078D4)[$git_status](green bg:#0078D4)[\uE0B0](fg:#0078D4 bg:#3393DD)$time[\uE0B0](fg:#3393DD bg:none)
-[╰](fg:#778997)$shell$character( $sudo) """
+[╰](fg:#778997)$shell$character """
 
 # プロンプトの右側（オプション）
 # right_format = "$time"
@@ -212,6 +212,18 @@ symbol = "󰍛"
 style = "fg:#9DCBEF"
 disabled = false
 
+[os]
+disabled = false
+format = " $symbol"
+
+[os.symbols]
+Ubuntu = "[](fg:#E95420)"
+Windows = "[](fg:#0078D4)"
+Macos = "[](fg:#999999)"
+Debian = "[](fg:#A81D33)"
+Fedora = "[󰌽](fg:#294172)"
+Arch = "[󰣇](fg:#1793D1)"
+
 [package]
 style = "#ffc0cb"
 symbol = "📦"
@@ -238,14 +250,15 @@ format = "[  $time ]($style)"
 style = "bg:#3393DD fg:white"
 
 [sudo]
+format = " $symbol"
 disabled = false
-symbol = "🦸 "
+symbol = "🦸"
 
 [username]
-style_root = "bold fg:#DC322F"
-style_user = "bold fg:#3393DD"
+style_root = ""
+style_user = "[](bold fg:#3393DD)"
 show_always = true
-format = "[](fg:#9DCBEF bold) [$user]($style)"
+format = " [$user](fg:#9DCBEF)"
 disabled = false
 
 # コマンド実行時間
@@ -256,9 +269,9 @@ style = "bold yellow"
 
 # Python
 [python]
-format = 'via [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+format = '[ ${symbol} ${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
 symbol = "󰌠"
-style = "yellow bold"
+style = "fg:#ffd343"
 pyenv_version_name = false
 detect_extensions = ["py"]
 detect_files = [".python-version", "Pipfile", "__pycache__", "pyproject.toml", "requirements.txt", "setup.py", "tox.ini"]
