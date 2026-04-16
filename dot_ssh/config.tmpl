@@ -38,9 +38,13 @@ Host *
 Host github.com
     HostName github.com
     User git
-{{- if stat (joinPath .chezmoi.homeDir ".ssh/{{ .git.email }}.ed25519") }}
+{{- if hasKey . "git" }}
+{{- if .git.email }}
+{{- if stat (joinPath .chezmoi.homeDir (printf ".ssh/%s.ed25519" .git.email)) }}
     IdentityFile ~/.ssh/{{ .git.email }}.ed25519
     IdentitiesOnly yes
+{{- end }}
+{{- end }}
 {{- end }}
 
 # 例: 開発サーバー
@@ -72,9 +76,11 @@ Host github.com
 # Azure Key Vaultから秘密鍵を取得する場合：
 # 1. setup-keys.sh.tmplスクリプトを実行
 # 2. または以下のコマンドで直接取得：
-#    az keyvault secret show --vault-name "{{ .keyVaultName }}" --name "ssh-github-private-key" --query value -o tsv > ~/.ssh/id_ed25519
+#    az keyvault secret show --vault-name "<KEYVAULT_NAME>" --name "ssh-github-private-key" --query value -o tsv > ~/.ssh/id_ed25519
 
+{{- if hasKey . "keyVaultName" }}
 {{- if .keyVaultName }}
 # Key Vault設定: {{ .keyVaultName }}
 # 秘密鍵の自動取得が設定されています
+{{- end }}
 {{- end }}

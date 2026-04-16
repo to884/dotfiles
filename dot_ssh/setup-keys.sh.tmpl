@@ -1,64 +1,126 @@
-# Azure Key Vault連携のためのスクリプト例
-# 使用方法: chezmoi execute-template .ssh/setup-keys.sh.tmpl | sh
-
 #!/bin/bash
+# ============================================================================
+# SSH Keys Setup Guide
+# ============================================================================
+#
+# このスクリプトは、SSH鍵のセットアップ状況を確認するためのガイドです。
+# chezmoi は SSH秘密鍵を管理しません。手動で配置してください。
+#
+# 使用方法:
+#   chmod +x ~/.ssh/setup-keys.sh
+#   ~/.ssh/setup-keys.sh
+#
+# ============================================================================
 
-# Azure Key Vaultの設定
-{{- $keyVaultName := "your-keyvault-name" }}
-{{- $subscriptionId := "your-subscription-id" }}
-
-{{- if lookPath "az" }}
-
-echo "Setting up SSH keys from Azure Key Vault..."
-
-# Azure CLIでログイン状態を確認
-if ! az account show &>/dev/null; then
-    echo "Azure CLIにログインしてください: az login"
-    exit 1
-fi
-
-{{- if $subscriptionId }}
-# サブスクリプション設定
-az account set --subscription "{{ $subscriptionId }}"
-{{- end }}
-
-# Key Vaultへのアクセス確認
-if ! az keyvault show --name "{{ $keyVaultName }}" &>/dev/null; then
-    echo "Key Vault '{{ $keyVaultName }}' にアクセスできません"
-    echo "Key Vault名やアクセス権限を確認してください"
-    exit 1
-fi
-
-# SSH秘密鍵の取得と配置
-echo "GitHub SSH秘密鍵を取得中..."
-if az keyvault secret show --vault-name "{{ $keyVaultName }}" --name "ssh-github-private-key" --query value -o tsv > ~/.ssh/id_ed25519 2>/dev/null; then
-    chmod 600 ~/.ssh/id_ed25519
-    echo "✓ SSH秘密鍵を配置しました"
-else
-    echo "⚠ SSH秘密鍵 'ssh-github-private-key' が見つかりません"
-fi
-
-# SSH公開鍵の取得と配置
-echo "GitHub SSH公開鍵を取得中..."
-if az keyvault secret show --vault-name "{{ $keyVaultName }}" --name "ssh-github-public-key" --query value -o tsv > ~/.ssh/id_ed25519.pub 2>/dev/null; then
-    chmod 644 ~/.ssh/id_ed25519.pub
-    echo "✓ SSH公開鍵を配置しました"
-else
-    echo "⚠ SSH公開鍵 'ssh-github-public-key' が見つかりません"
-fi
-
-# SSH Agentに鍵を追加
-if [ -f ~/.ssh/id_ed25519 ]; then
-    ssh-add ~/.ssh/id_ed25519 2>/dev/null || true
-    echo "✓ SSH鍵をSSH Agentに追加しました"
-fi
-
-echo "SSH keys configured successfully!"
-
+# SSH鍵のファイル名（chezmoi変数から取得）
+{{- if hasKey . "ssh" }}
+SSH_PRIVATE_KEY="{{ .ssh.privateKeyFile }}"
+SSH_PUBLIC_KEY="{{ .ssh.publicKeyFile }}"
 {{- else }}
-echo "Azure CLI (az) not installed"
-echo "Install with:"
-echo "  Windows: winget install Microsoft.AzureCLI"
-echo "  macOS:   brew install azure-cli"
-echo "  Linux:   curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
+SSH_PRIVATE_KEY="id_ed25519"
+SSH_PUBLIC_KEY="id_ed25519.pub"
 {{- end }}
+
+echo "=========================================="
+echo "SSH Keys Setup Guide"
+echo "=========================================="
+echo ""
+echo "設定されているSSH鍵:"
+echo "  秘密鍵: ~/.ssh/$SSH_PRIVATE_KEY"
+echo "  公開鍵: ~/.ssh/$SSH_PUBLIC_KEY"
+echo ""
+
+# SSH ディレクトリの確認
+if [ ! -d ~/.ssh ]; then
+    echo "❌ ~/.ssh ディレクトリが存在しません"
+    echo "   作成してください: mkdir -p ~/.ssh && chmod 700 ~/.ssh"
+    exit 1
+fi
+
+echo "✓ ~/.ssh ディレクトリが存在します"
+echo ""
+
+# SSH 秘密鍵の確認
+echo "【SSH秘密鍵の確認】"
+if [ -f ~/.ssh/$SSH_PRIVATE_KEY ]; then
+    echo "✓ ~/.ssh/$SSH_PRIVATE_KEY が存在します"
+    
+    # パーミッションの確認
+    PERMS=$(stat -c "%a" ~/.ssh/$SSH_PRIVATE_KEY 2>/dev/null || stat -f "%A" ~/.ssh/$SSH_PRIVATE_KEY 2>/dev/null)
+    if [ "$PERMS" = "600" ]; then
+        echo "  ✓ パーミッション: $PERMS (正常)"
+    else
+        echo "  ⚠ パーミッション: $PERMS (推奨: 600)"
+        echo "  修正するには: chmod 600 ~/.ssh/$SSH_PRIVATE_KEY"
+    fi
+else
+    echo "❌ ~/.ssh/$SSH_PRIVATE_KEY が存在しません"
+    echo ""
+    echo "【SSH鍵の生成方法】"
+    echo "  1. 新しい鍵を生成する場合:"
+{{- if hasKey . "git" }}
+{{- if .git.email }}
+    echo "     ssh-keygen -t ed25519 -C \"{{ .git.email }}\""
+{{- else }}
+    echo "     ssh-keygen -t ed25519 -C \"your.email@example.com\""
+{{- end }}
+{{- else }}
+    echo "     ssh-keygen -t ed25519 -C \"your.email@example.com\""
+{{- end }}
+    echo "     # デフォルトのファイル名を使用するか、~/.ssh/$SSH_PRIVATE_KEY を指定"
+    echo ""
+    echo "  2. 既存の鍵を配置する場合:"
+    echo "     - Windows から WSL へコピー:"
+    echo "       cp /mnt/c/Users/YourName/.ssh/$SSH_PRIVATE_KEY ~/.ssh/"
+    echo "       chmod 600 ~/.ssh/$SSH_PRIVATE_KEY"
+    echo ""
+    echo "     - 別のマシンからコピー:"
+    echo "       scp user@remote:~/.ssh/$SSH_PRIVATE_KEY ~/.ssh/"
+    echo "       chmod 600 ~/.ssh/$SSH_PRIVATE_KEY"
+fi
+
+echo ""
+
+# SSH 公開鍵の確認
+echo "【SSH公開鍵の確認】"
+if [ -f ~/.ssh/$SSH_PUBLIC_KEY ]; then
+    echo "✓ ~/.ssh/$SSH_PUBLIC_KEY が存在します"
+    echo "  公開鍵の内容:"
+    echo "  $(cat ~/.ssh/$SSH_PUBLIC_KEY)"
+else
+    echo "❌ ~/.ssh/$SSH_PUBLIC_KEY が存在しません"
+    if [ -f ~/.ssh/$SSH_PRIVATE_KEY ]; then
+        echo "  秘密鍵から公開鍵を生成できます:"
+        echo "  ssh-keygen -y -f ~/.ssh/$SSH_PRIVATE_KEY > ~/.ssh/$SSH_PUBLIC_KEY"
+    fi
+fi
+
+echo ""
+
+# SSH Agent の確認
+echo "【SSH Agentの確認】"
+if ssh-add -l &>/dev/null; then
+    echo "✓ SSH Agent が実行中です"
+    echo "  登録済みの鍵:"
+    ssh-add -l
+else
+    echo "❌ SSH Agent が実行されていないか、鍵が登録されていません"
+    if [ -f ~/.ssh/$SSH_PRIVATE_KEY ]; then
+        echo "  鍵を追加するには: ssh-add ~/.ssh/$SSH_PRIVATE_KEY"
+    fi
+fi
+
+echo ""
+echo "=========================================="
+echo "セットアップガイド完了"
+echo "=========================================="
+echo ""
+echo "【その他のシークレットファイル】"
+echo "以下のファイルも手動で配置してください："
+echo "  - ~/.aws/credentials (AWS認証情報)"
+echo "  - ~/.config/gh/hosts.yml (GitHub CLI認証)"
+echo "  - ~/.gnupg/* (GPG鍵)"
+echo ""
+echo "これらのファイルは .chezmoiignore で除外されており、"
+echo "chezmoi では管理されません。"
+echo ""

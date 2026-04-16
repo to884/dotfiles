@@ -21,6 +21,7 @@
 {{- end }}
 
 # Azure Key Vaultから認証情報を取得する場合の設定例
+{{- if hasKey . "keyVaultName" }}
 {{- if and .keyVaultName (lookPath "az") }}
 [credential "https://github.com"]
     # GitHub Personal Access Token（Azure Key Vaultから取得）
@@ -28,6 +29,7 @@
 
 [url "https://{{ output "azure-keyvault-secret" .keyVaultName "github-username" }}:{{ output "azure-keyvault-secret" .keyVaultName "github-personal-access-token" }}@github.com/"]
     insteadOf = https://github.com/
+{{- end }}
 {{- end }}
 
 [core]
@@ -148,8 +150,10 @@
 # ============================================================================
 
 [github]
+{{- if hasKey . "github" }}
 {{- if .github.user }}
     user = {{ .github.user }}
+{{- end }}
 {{- end }}
 
 # ============================================================================
