@@ -9,13 +9,13 @@
 
 [user]
     # ユーザー情報（環境に応じて設定してください）
-{{- if .git_name }}
-    name = {{ .git_name }}
+{{- if .git.name }}
+    name = {{ .git.name }}
 {{- else }}
     # name = Your Name
 {{- end }}
-{{- if .email }}
-    email = {{ .email }}
+{{- if .git.email }}
+    email = {{ .git.email }}
 {{- else }}
     # email = your.email@example.com
 {{- end }}
@@ -38,6 +38,12 @@
     autocrlf = input
     # ファイルモードの変更を無視しない
     filemode = true
+
+{{- if stat (joinPath .chezmoi.homeDir ".certs/ZscalerRootCA.pem") }}
+[http]
+    # Zscaler ルート CA 証明書
+    sslCAInfo = ~/.certs/ZscalerRootCA.pem
+{{- end }}
 
 [init]
     # デフォルトブランチ名
@@ -142,8 +148,8 @@
 # ============================================================================
 
 [github]
-{{- if .github_user }}
-    user = {{ .github_user }}
+{{- if .github.user }}
+    user = {{ .github.user }}
 {{- end }}
 
 # ============================================================================
