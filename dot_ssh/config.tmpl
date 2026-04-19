@@ -7,6 +7,15 @@
 
 # すべてのホストに適用される設定
 Host *
+    # SSH鍵
+{{- if .ssh.privateKeyFile }}
+    IdentityFile ~/.ssh/{{ .ssh.privateKeyFile }}
+{{- else }}
+    IdentityFile ~/.ssh/id_ed25519
+{{- end }}
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+
     # SSH鍵を自動的に追加
     AddKeysToAgent yes
 
@@ -38,14 +47,6 @@ Host *
 Host github.com
     HostName github.com
     User git
-{{- if hasKey . "git" }}
-{{- if .git.email }}
-{{- if stat (joinPath .chezmoi.homeDir (printf ".ssh/%s.ed25519" .git.email)) }}
-    IdentityFile ~/.ssh/{{ .git.email }}.ed25519
-    IdentitiesOnly yes
-{{- end }}
-{{- end }}
-{{- end }}
 
 # 例: 開発サーバー
 # Host dev-server
