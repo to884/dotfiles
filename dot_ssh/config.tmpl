@@ -38,6 +38,10 @@ Host *
 Host github.com
     HostName github.com
     User git
+{{- $zscalerPem := joinPath .chezmoi.homeDir ".certs/ZscalerRootCA.pem" }}
+{{- if stat $zscalerPem }}
+    proxyCommand nc -X connect -x zia-lb-vip.ogis-ri.co.jp:80 %h %p
+{{- end }}
 {{- if hasKey . "git" }}
 {{- if .git.email }}
 {{- if stat (joinPath .chezmoi.homeDir (printf ".ssh/%s.ed25519" .git.email)) }}
