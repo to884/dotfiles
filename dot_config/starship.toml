@@ -149,7 +149,7 @@ repo_root_style = "fg:#ffffff bg:#174276"
 repo_root_format="󰊢 [$before_root_path]($style)[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
 style = "bg:#174276 fg:white"
 use_os_path_sep = true
-format = "[ﱮ](fg:#ffffff bg:#174276) [$path]($style)[$read_only]($read_only_style) "
+format = "[AA](fg:#ffffff bg:#174276) [$path]($style)[$read_only]($read_only_style) "
 
 [docker_context]
 symbol = ""
